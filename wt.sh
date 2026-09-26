@@ -58,7 +58,7 @@ usage() {
 Usage:
   wt list
   wt switch <branch-or-worktree>
-  wt new <new-branch> [base-branch]
+  wt new <branch> [base-branch]
   wt track <branch> [remote]
   wt rename <branch-or-worktree> <new-branch>
   wt remove [--force] <branch-or-worktree>
@@ -75,8 +75,8 @@ Commands:
     Switch to a worktree shown by wt list.
 
   new
-    Create a new branch and worktree from a base branch.
-    Uses the current branch when [base-branch] is omitted.
+    Create a worktree for an existing local branch, or create a new branch.
+    New branches use the current branch when [base-branch] is omitted.
 
   track
     Create a new tracking branch and worktree from a remote branch.
@@ -478,24 +478,30 @@ cmd_switch() {
 }
 
 cmd_new() {
-  local new_branch="${1:-}"
+  local branch="${1:-}"
   local base_branch="${2:-}"
   local target_dir
+  local result_message
 
-  [[ -n "$new_branch" ]] || die "new requires <new-branch>."
-  [[ $# -le 2 ]] || die "Usage: wt new <new-branch> [base-branch]"
+  [[ -n "$branch" ]] || die "new requires <branch>."
+  [[ $# -le 2 ]] || die "Usage: wt new <branch> [base-branch]"
 
-  if [[ -z "$base_branch" ]]; then
-    base_branch="$(current_branch_name)"
-  fi
-
-  ensure_branch_absent "$new_branch"
-  target_dir="$(target_dir_for_branch "$new_branch")"
+  target_dir="$(target_dir_for_branch "$branch")"
   ensure_target_absent "$target_dir"
 
-  run_quiet git -C "$current_root" worktree add -b "$new_branch" "$target_dir" "$base_branch"
+  if branch_exists "$branch"; then
+    [[ -z "$base_branch" ]] || die "base branch cannot be specified for existing branch: $branch"
+    run_quiet git -C "$current_root" worktree add "$target_dir" "$branch"
+    result_message="attached existing branch $branch"
+  else
+    if [[ -z "$base_branch" ]]; then
+      base_branch="$(current_branch_name)"
+    fi
+    run_quiet git -C "$current_root" worktree add -b "$branch" "$target_dir" "$base_branch"
+    result_message="created branch $branch from $base_branch"
+  fi
   sync_files_to_target "$current_root" "$target_dir"
-  printf 'created branch %s from %s @ %s\n' "$new_branch" "$base_branch" "$(display_path "$target_dir")"
+  printf '%s @ %s\n' "$result_message" "$(display_path "$target_dir")"
   print_synced_files
 }
 
@@ -762,6 +768,18 @@ _wt_base_branches() {
   _wt_unique_reply "$current" "${branches[@]}"
 }
 
+_wt_local_branches() {
+  local current="$1"
+  local branch
+  local -a branches=()
+
+  while IFS= read -r branch; do
+    branches+=("$branch")
+  done < <(git for-each-ref --format='%(refname:short)' refs/heads 2>/dev/null)
+
+  _wt_reply "$current" "${branches[@]}"
+}
+
 _wt() {
   local current="${COMP_WORDS[COMP_CWORD]:-}"
   local command="${COMP_WORDS[1]:-}"
@@ -778,7 +796,10 @@ _wt() {
       [[ "$COMP_CWORD" -eq 2 ]] && _wt_worktree_targets "$current"
       ;;
     new)
-      [[ "$COMP_CWORD" -eq 3 ]] && _wt_base_branches "$current"
+      case "$COMP_CWORD" in
+        2) _wt_local_branches "$current" ;;
+        3) _wt_base_branches "$current" ;;
+      esac
       ;;
     track)
       case "$COMP_CWORD" in
@@ -910,13 +931,21 @@ _wt_base_branches() {
   compadd -- "${branches[@]}"
 }
 
+_wt_local_branches() {
+  local -a branches
+
+  branches=("${(@f)$(git for-each-ref --format='%(refname:short)' refs/heads 2>/dev/null)}")
+  (( ${#branches[@]} > 0 )) || return 1
+  compadd -- "${branches[@]}"
+}
+
 _wt_command_names() {
   local -a commands
 
   commands=(
     'list:Show worktrees for the current repository'
     'switch:Switch to a worktree shown by wt list'
-    'new:Create a new branch and worktree from a base branch'
+    'new:Create a worktree for an existing or new branch'
     'track:Create a tracking branch and worktree from a remote branch'
     'rename:Rename a local branch without moving its worktree'
     'remove:Remove a worktree and delete the linked local branch'
@@ -946,7 +975,7 @@ _wt_track() {
 _wt_new() {
   case "$CURRENT" in
     3)
-      _message 'new branch name'
+      _wt_local_branches
       ;;
     4)
       _wt_base_branches

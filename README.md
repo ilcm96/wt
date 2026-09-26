@@ -39,6 +39,7 @@ Run commands from inside a Git repository.
 ```bash
 wt list
 wt new feature/login main
+wt new feature/existing
 wt switch feature/login
 wt rename feature/login feature/sign-in
 wt sync
@@ -48,7 +49,7 @@ wt sync
 | ----------------------------------- | ---------------------------------------------------------------------------- |
 | `wt list`                           | Show each worktree's branch, status, and path                                |
 | `wt switch <target>`                | Change to a worktree                                                         |
-| `wt new <new-branch> [base-branch]` | Create a branch and worktree; defaults to the current branch as the base     |
+| `wt new <branch> [base-branch]`     | Create a worktree for an existing local branch, or create a new branch       |
 | `wt track <branch> [remote]`        | Create a new local tracking branch and worktree; remote defaults to `origin` |
 | `wt rename <target> <new-branch>`   | Rename the local branch without moving its directory                         |
 | `wt remove [--force] <target>`      | Remove a worktree and its local branch                                       |
@@ -58,6 +59,8 @@ wt sync
 | `wt -h` / `wt -v`                   | Show help / version                                                          |
 
 A `<target>` can be a branch name, a worktree directory name, or a full path.
+
+`wt new feature/existing` uses the existing local branch and preserves its commits. If the branch does not exist, `wt new` creates it from the current branch or the supplied base branch. A base branch cannot be supplied for an existing branch, and a branch already checked out in another worktree must be switched away from first.
 
 New worktrees are created next to the main repository as `<repo>-<branch>`. Characters outside `A–Z`, `a–z`, `0–9`, `.`, `_`, and `-` are replaced with `-`. For example, `feature/login` in `my-app` becomes `my-app-feature-login`.
 
