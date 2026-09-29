@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-VERSION='1.0.0'
+VERSION='1.1.0'
 
 # File name patterns to sync at any depth below the worktree root.
 SYNC_FILE_PATTERNS=(
@@ -421,6 +421,7 @@ cmd_list() {
   local index
   local branch
   local branch_column_width=6
+  local list_output=""
 
   [[ $# -eq 0 ]] || die "Usage: wt list"
 
@@ -436,12 +437,15 @@ cmd_list() {
     (( ${#branch} <= branch_column_width )) || branch_column_width="${#branch}"
   done
 
-  printf '  %-*s  %-7s  %s\n' "$branch_column_width" "BRANCH" "STATE" "PATH"
-  printf '  %-*s  %-7s  %s\n' "$branch_column_width" "------" "-----" "----"
+  printf -v list_output '  %-*s  %-7s  %s\n' "$branch_column_width" "BRANCH" "STATE" "PATH"
+  list_output+="$(printf '  %-*s  %-7s  %s\n' "$branch_column_width" "------" "-----" "----")"
 
   for ((index = 0; index < ${#worktree_paths[@]}; index++)); do
-    print_worktree_row "${worktree_paths[$index]}" "${worktree_branches[$index]}" "$branch_column_width"
+    list_output+=$'\n'
+    list_output+="$(print_worktree_row "${worktree_paths[$index]}" "${worktree_branches[$index]}" "$branch_column_width")"
   done
+
+  printf '%s\n' "$list_output"
 }
 
 cmd_switch() {
