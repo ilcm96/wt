@@ -10,6 +10,7 @@ SYNC_FILE_PATTERNS=(
   '.env.*'
   'AGENTS.override.md'
   'secret.yaml'
+  'CLAUDE.local.md'
 )
 
 # Directory names to skip at any depth below the worktree root.
@@ -65,6 +66,7 @@ Usage:
   wt sync
   wt code <branch-or-worktree>
   wt codex <branch-or-worktree>
+  wt t3 <branch-or-worktree>
   wt completion bash|zsh
 
 Commands:
@@ -99,6 +101,9 @@ Commands:
 
   codex
     Open a worktree in Codex App.
+
+  t3
+    Open a worktree in T3 Code.
 EOF
 }
 
@@ -643,6 +648,17 @@ cmd_open_codex() {
   /usr/bin/open "codex://threads/new?path=$encoded_path"
 }
 
+cmd_open_t3() {
+  local target="${1:-}"
+
+  [[ -n "$target" ]] || die "t3 requires <branch-or-worktree>."
+  [[ $# -eq 1 ]] || die "Usage: wt t3 <branch-or-worktree>"
+  command -v t3 >/dev/null 2>&1 || die "t3 command not found."
+
+  resolve_worktree_target "$target" "Open"
+  t3 app "$resolved_worktree_path"
+}
+
 print_bash_completion() {
   cat <<'EOF'
 _wt_reply() {
@@ -790,7 +806,7 @@ _wt() {
 
   case "$COMP_CWORD" in
     1)
-      _wt_reply "$current" list switch new track rename remove sync code codex completion
+      _wt_reply "$current" list switch new track rename remove sync code codex t3 completion
       return
       ;;
   esac
@@ -822,7 +838,7 @@ _wt() {
       fi
       _wt_worktree_targets "$current" removable
       ;;
-    code|codex)
+    code|codex|t3)
       [[ "$COMP_CWORD" -eq 2 ]] && _wt_worktree_targets "$current"
       ;;
     completion)
@@ -956,6 +972,7 @@ _wt_command_names() {
     'sync:Propagate files to other worktrees'
     'code:Open a worktree in VSCode'
     'codex:Open a worktree in Codex App'
+    't3:Open a worktree in T3 Code'
   )
 
   _describe -V -t commands 'wt command' commands
@@ -1035,7 +1052,7 @@ _wt() {
     remove)
       _wt_remove
       ;;
-    code|codex)
+    code|codex|t3)
       _wt_open_editor
       ;;
   esac
@@ -1117,6 +1134,9 @@ main() {
       ;;
     codex)
       cmd_open_codex "$@"
+      ;;
+    t3)
+      cmd_open_t3 "$@"
       ;;
     *)
       usage

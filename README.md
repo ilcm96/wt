@@ -56,6 +56,7 @@ wt sync
 | `wt sync`                           | Copy matching files from the current worktree to other worktrees             |
 | `wt code <target>`                  | Open in VS Code; requires the `code` command                                 |
 | `wt codex <target>`                 | Open in the Codex app; macOS only                                            |
+| `wt t3 <target>`                    | Open in the running T3 Code app; requires the `t3` command                   |
 | `wt -h` / `wt -v`                   | Show help / version                                                          |
 
 A `<target>` can be a branch name, a worktree directory name, or a full path.
